@@ -126,22 +126,24 @@ app.get('/', (req, res) => res.redirect('/dashboard'));
 
 app.get('/dashboard', async (req, res) => {
   try {
-    const [patients, doctors, treatments, appointments, bills] = await Promise.all([
+    const [patients, doctors, treatments, appointments, bills, labOrders] = await Promise.all([
       api.get('/patients').catch(() => ({ data: [] })),
       api.get('/doctors').catch(() => ({ data: [] })),
       api.get('/treatments').catch(() => ({ data: [] })),
       api.get('/appointments').catch(() => ({ data: [] })),
-      api.get('/bills').catch(() => ({ data: [] }))
+      api.get('/bills').catch(() => ({ data: [] })),
+      api.get('/lab-orders').catch(() => ({ data: [] }))
     ]);
     res.render('dashboard', {
       patients: patients.data,
       doctors: doctors.data,
       treatments: treatments.data,
       appointments: appointments.data,
-      bills: bills.data
+      bills: bills.data,
+      labOrders: labOrders.data
     });
   } catch (err) {
-    res.render('dashboard', { patients: [], doctors: [], treatments: [], appointments: [], bills: [] });
+    res.render('dashboard', { patients: [], doctors: [], treatments: [], appointments: [], bills: [], labOrders: [] });
   }
 });
 
@@ -751,15 +753,17 @@ app.post('/prescriptions/:id/delete', requireLogin, async (req, res) => {
 // Patient timeline: visits + bills together
 app.get('/patients/:id/timeline', requireLogin, async (req, res) => {
   try {
-    const [{ data: patient }, { data: appointments }, { data: bills }] = await Promise.all([
+    const [{ data: patient }, { data: appointments }, { data: bills }, { data: labOrders }] = await Promise.all([
       api.get(`/patients/${req.params.id}`),
       api.get('/appointments').catch(() => ({ data: [] })),
-      api.get('/bills').catch(() => ({ data: [] }))
+      api.get('/bills').catch(() => ({ data: [] })),
+      api.get('/lab-orders').catch(() => ({ data: [] }))
     ]);
     res.render('patient_timeline', {
       patient,
       visits: appointments.filter(a => String(a.patient_id) === String(req.params.id)),
-      bills: bills.filter(b => String(b.patient_id) === String(req.params.id))
+      bills: bills.filter(b => String(b.patient_id) === String(req.params.id)),
+      labOrders: labOrders.filter(o => String(o.patient_id) === String(req.params.id))
     });
   } catch (err) {
     res.redirect('/patients');
@@ -983,6 +987,162 @@ app.post('/settings/restore', requireAdmin, _upload.single('backup'), async (req
   } catch (err) {
     const msg = (err.response && err.response.data && err.response.data.error) || 'Restore failed';
     res.redirect('/settings?restore_error=' + encodeURIComponent(msg));
+  }
+});
+
+// Lab test catalog (admin only)
+app.get('/lab-tests', requireAdmin, async (req, res) => {
+  try {
+    const { data } = await api.get('/lab-tests');
+    res.render('labtests', { tests: data, error: req.query.error || null });
+  } catch (err) {
+    res.render('labtests', { tests: [], error: 'Could not load lab tests' });
+  }
+});
+
+app.get('/lab-tests/new', requireAdmin, (req, res) => {
+  res.render('labtest_form', { test: null, error: null });
+});
+
+app.get('/lab-tests/:id/edit', requireAdmin, async (req, res) => {
+  try {
+    const { data } = await api.get(`/lab-tests/${req.params.id}`);
+    res.render('labtest_form', { test: data, error: null });
+  } catch (err) {
+    res.redirect('/lab-tests');
+  }
+});
+
+app.post('/lab-tests', requireAdmin, async (req, res) => {
+  try {
+    await apiFor(req).post('/lab-tests', req.body);
+    req.session.toast = 'Lab test added';
+    res.redirect('/lab-tests');
+  } catch (err) {
+    const msg = (err.response && err.response.data && err.response.data.error) || 'Error saving test';
+    res.status(400).render('labtest_form', { test: null, error: msg });
+  }
+});
+
+app.post('/lab-tests/:id', requireAdmin, async (req, res) => {
+  try {
+    await apiFor(req).put(`/lab-tests/${req.params.id}`, req.body);
+    req.session.toast = 'Lab test updated';
+    res.redirect('/lab-tests');
+  } catch (err) {
+    const msg = (err.response && err.response.data && err.response.data.error) || 'Error saving test';
+    res.status(400).render('labtest_form', { test: { id: req.params.id, ...req.body }, error: msg });
+  }
+});
+
+app.post('/lab-tests/:id/toggle', requireAdmin, async (req, res) => {
+  try {
+    const { data } = await api.get(`/lab-tests/${req.params.id}`);
+    await apiFor(req).put(`/lab-tests/${req.params.id}`, { is_active: !data.is_active });
+  } catch (err) {}
+  res.redirect('/lab-tests');
+});
+
+app.post('/lab-tests/:id/delete', requireAdmin, async (req, res) => {
+  try {
+    await apiFor(req).delete(`/lab-tests/${req.params.id}`);
+    req.session.toast = 'Lab test deleted';
+  } catch (err) {
+    const msg = (err.response && err.response.data && err.response.data.error) || 'Error deleting test';
+    return res.redirect('/lab-tests?error=' + encodeURIComponent(msg));
+  }
+  res.redirect('/lab-tests');
+});
+
+// Lab orders (staff + admin)
+const LAB_FLOW = {
+  ordered: ['collected', 'cancelled'],
+  collected: ['in_progress', 'cancelled'],
+  in_progress: ['completed', 'cancelled'],
+  completed: [], cancelled: []
+};
+
+app.get('/lab-orders', requireLogin, async (req, res) => {
+  try {
+    const params = {};
+    if (req.query.status) params.status = req.query.status;
+    const { data } = await api.get('/lab-orders', { params });
+    res.render('laborders', { orders: data, status: req.query.status || '', error: req.query.error || null });
+  } catch (err) {
+    res.render('laborders', { orders: [], status: '', error: 'Could not load lab orders' });
+  }
+});
+
+app.get('/lab-orders/new', requireLogin, async (req, res) => {
+  try {
+    const [patients, tests] = await Promise.all([
+      api.get('/patients').catch(() => ({ data: [] })),
+      api.get('/lab-tests', { params: { active: '1' } }).catch(() => ({ data: [] }))
+    ]);
+    res.render('laborder_form', { patients: patients.data, tests: tests.data, error: null });
+  } catch (err) {
+    res.render('laborder_form', { patients: [], tests: [], error: null });
+  }
+});
+
+app.post('/lab-orders', requireLogin, async (req, res) => {
+  try {
+    const test_ids = [].concat(req.body.test_ids || []).map(Number).filter(Boolean);
+    const { data } = await apiFor(req).post('/lab-orders', {
+      patient_id: req.body.patient_id, appointment_id: req.body.appointment_id || null,
+      priority: req.body.priority, test_ids
+    });
+    req.session.toast = 'Lab order ' + data.order_no + ' created';
+    res.redirect(`/lab-orders/${data.id}`);
+  } catch (err) {
+    const msg = (err.response && err.response.data && err.response.data.error) || 'Error creating order';
+    try {
+      const [patients, tests] = await Promise.all([
+        api.get('/patients').catch(() => ({ data: [] })),
+        api.get('/lab-tests', { params: { active: '1' } }).catch(() => ({ data: [] }))
+      ]);
+      res.status(400).render('laborder_form', { patients: patients.data, tests: tests.data, error: msg });
+    } catch (e) {
+      res.redirect('/lab-orders');
+    }
+  }
+});
+
+app.get('/lab-orders/:id', requireLogin, async (req, res) => {
+  try {
+    const { data } = await api.get(`/lab-orders/${req.params.id}`);
+    res.render('laborder_detail', { order: data, nextStatuses: LAB_FLOW[data.status] || [], error: req.query.error || null });
+  } catch (err) {
+    res.redirect('/lab-orders');
+  }
+});
+
+app.post('/lab-orders/:id/status', requireLogin, async (req, res) => {
+  try {
+    await apiFor(req).post(`/lab-orders/${req.params.id}/status`, { status: req.body.status });
+    req.session.toast = 'Order ' + req.body.status;
+    res.redirect(`/lab-orders/${req.params.id}`);
+  } catch (err) {
+    const msg = (err.response && err.response.data && err.response.data.error) || 'Error updating status';
+    res.redirect(`/lab-orders/${req.params.id}`);
+  }
+});
+
+app.post('/lab-orders/:id/delete', requireLogin, async (req, res) => {
+  try {
+    await apiFor(req).delete(`/lab-orders/${req.params.id}`);
+    req.session.toast = 'Lab order deleted';
+  } catch (err) {}
+  res.redirect('/lab-orders');
+});
+
+app.post('/order-items/:id', requireLogin, async (req, res) => {
+  try {
+    const { data } = await apiFor(req).put(`/order-items/${req.params.id}`, req.body);
+    req.session.toast = 'Result saved';
+    res.redirect(`/lab-orders/${data.order_id}`);
+  } catch (err) {
+    res.redirect('/lab-orders');
   }
 });
 

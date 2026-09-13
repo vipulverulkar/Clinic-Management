@@ -66,5 +66,24 @@
         <% } %>
       </div>
     </div>
+    <div class="card mt-3">
+      <div class="card-header"><i class="bi bi-eyedropper me-1"></i>Lab Orders (<%= (typeof labOrders !== 'undefined' ? labOrders : []).length %>)</div>
+      <div class="card-body">
+        <% const _lo = (typeof labOrders !== 'undefined' ? labOrders : []); %>
+        <% if (!_lo.length) { %>
+          <p class="text-muted mb-0">No lab orders</p>
+        <% } else { %>
+          <ul class="list-group list-group-flush">
+            <% _lo.slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).forEach(o => { %>
+              <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
+                <span><strong class="bill-no"><%= o.order_no %></strong><br><small class="text-muted"><%= o.items.length %> test(s) &bull; &#8377;<%= o.total %></small></span>
+                <span><span class="badge bg-<%= o.status === 'completed' ? 'success' : o.status === 'cancelled' ? 'danger' : 'info' %> me-1"><%= o.status %></span>
+                  <a href="/lab-orders/<%= o.id %>" class="btn btn-sm btn-outline-primary">Open</a></span>
+              </li>
+            <% }) %>
+          </ul>
+        <% } %>
+      </div>
+    </div>
   </div>
 </div>

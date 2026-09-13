@@ -15,6 +15,8 @@ _bills.forEach(b => {
 const todaysAppts = appointments.filter(a => (a.appointment_date || '').slice(0, 10) === todayKey);
 const pendingAppts = appointments.filter(a => a.status === 'pending');
 const unpaidBills = _bills.filter(b => (b.balance || 0) > 0);
+const _lab = (typeof labOrders !== 'undefined' ? labOrders : []);
+const openLabs = _lab.filter(o => ['ordered', 'collected', 'in_progress'].includes(o.status));
 %>
 <div class="row mb-4 align-items-end">
   <div class="col-12 col-md-7">
@@ -143,6 +145,7 @@ const unpaidBills = _bills.filter(b => (b.balance || 0) > 0);
       <div class="card-body">
         <% const _alerts = []; %>
         <% if (pendingAppts.length) { _alerts.push({ icon: 'bi-hourglass-split', text: pendingAppts.length + ' pending appointment' + (pendingAppts.length > 1 ? 's' : ''), href: '/appointments' }); } %>
+        <% if (openLabs.length) { _alerts.push({ icon: 'bi-eyedropper', text: openLabs.length + ' open lab order' + (openLabs.length > 1 ? 's' : ''), href: '/lab-orders' }); } %>
         <% const _d0 = new Date(); _d0.setHours(0,0,0,0); const _due = appointments.filter(a => a.follow_up_date && !['completed', 'cancelled'].includes(a.status) && new Date(a.follow_up_date) <= new Date(_d0.getTime() + 7 * 864e5)); %>
         <% if (_due.length) { _alerts.push({ icon: 'bi-bell', text: _due.length + ' follow-up' + (_due.length > 1 ? 's' : '') + ' due', href: '/followups' }); } %>
         <% if (unpaidBills.length) { _alerts.push({ icon: 'bi-exclamation-triangle', text: unpaidBills.length + ' unpaid bill' + (unpaidBills.length > 1 ? 's' : '') + ' (&#8377;' + Math.round(unpaidBills.reduce((s, b) => s + (b.balance || 0), 0)) + ')', href: '/bills' }); } %>

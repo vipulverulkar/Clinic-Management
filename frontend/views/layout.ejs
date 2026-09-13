@@ -37,10 +37,12 @@
       <a class="sidebar-link" href="/appointments"><i class="bi bi-calendar-check"></i>Appointments</a>
       <a class="sidebar-link" href="/calendar"><i class="bi bi-calendar3"></i>Calendar</a>
       <a class="sidebar-link" href="/followups"><i class="bi bi-bell"></i>Follow-ups</a>
+      <a class="sidebar-link" href="/lab-orders"><i class="bi bi-eyedropper"></i>Lab Orders</a>
       <a class="sidebar-link" href="/bills"><i class="bi bi-receipt"></i>Billing</a>
       <% if (typeof user !== 'undefined' && user && user.role === 'admin') { %>
         <div class="sidebar-section">Administration</div>
         <a class="sidebar-link" href="/treatments"><i class="bi bi-capsule"></i>Treatments</a>
+        <a class="sidebar-link" href="/lab-tests"><i class="bi bi-flask"></i>Lab Tests</a>
         <a class="sidebar-link" href="/masters"><i class="bi bi-gear"></i>Masters</a>
         <a class="sidebar-link sub" href="/masters/specializations"><i class="bi bi-dot"></i>Specializations</a>
         <a class="sidebar-link sub" href="/masters/categories"><i class="bi bi-dot"></i>Categories</a>
