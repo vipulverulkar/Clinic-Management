@@ -30,7 +30,7 @@ DEFAULT_LOOKUP_TYPES = [
      'Medical specialities offered at the clinic', 'e.g. Cardiology', True),
     ('treatment_category', 'Treatment Categories', 'bi-capsule',
      'Categories for the treatment catalog', 'e.g. Physiotherapy', True),
-    ('appointment_status', 'Appointment Statuses', 'bi-calendar-check',
+    ('appointment_status', 'Appointment Status', 'bi-calendar-check',
      'Workflow statuses for appointments', 'e.g. no-show', True),
     ('gender', 'Genders', 'bi-people', 'Patient gender options', '', False),
     ('blood_group', 'Blood Groups', 'bi-droplet', 'Blood group options', '', False),
