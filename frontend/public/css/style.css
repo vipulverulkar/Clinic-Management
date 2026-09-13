@@ -936,6 +936,30 @@ a .quick-action {
   to { opacity: 0; transform: translateY(10px); }
 }
 
+/* ---------- Lab test picker cards ---------- */
+.test-pick {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.65rem 0.75rem;
+  cursor: pointer;
+  height: 100%;
+  transition: border-color 0.13s, background-color 0.13s, box-shadow 0.13s;
+}
+.test-pick:hover {
+  border-color: var(--brand-1);
+}
+.test-pick:has(input:checked) {
+  border-color: var(--brand-1);
+  background: color-mix(in srgb, var(--brand-1) 8%, transparent);
+  box-shadow: 0 3px 10px var(--brand-glow);
+}
+.test-pick input {
+  margin-top: 3px;
+}
+
 /* ---------- Print (lists & invoices) ---------- */
 /* Zero page margin suppresses the browser header/footer (URL, IP, date) */
 @page {

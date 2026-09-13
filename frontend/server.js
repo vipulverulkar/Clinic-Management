@@ -1075,13 +1075,17 @@ app.get('/lab-orders', requireLogin, async (req, res) => {
 
 app.get('/lab-orders/new', requireLogin, async (req, res) => {
   try {
-    const [patients, tests] = await Promise.all([
+    const [patients, tests, appointments] = await Promise.all([
       api.get('/patients').catch(() => ({ data: [] })),
-      api.get('/lab-tests', { params: { active: '1' } }).catch(() => ({ data: [] }))
+      api.get('/lab-tests', { params: { active: '1' } }).catch(() => ({ data: [] })),
+      api.get('/appointments').catch(() => ({ data: [] }))
     ]);
-    res.render('laborder_form', { patients: patients.data, tests: tests.data, error: null });
+    res.render('laborder_form', {
+      patients: patients.data, tests: tests.data, appointments: appointments.data,
+      selectedPatientId: String(req.query.patient_id || ''), error: null
+    });
   } catch (err) {
-    res.render('laborder_form', { patients: [], tests: [], error: null });
+    res.render('laborder_form', { patients: [], tests: [], appointments: [], selectedPatientId: '', error: null });
   }
 });
 

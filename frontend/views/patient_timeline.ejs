@@ -12,6 +12,7 @@
         <% if (patient.blood_group) { %><span class="badge bg-danger me-1"><%= patient.blood_group %></span><% } %>
         <% if (patient.gender) { %><span class="badge bg-info text-dark me-1"><%= patient.gender %></span><% } %>
         <span class="badge bg-primary count-badge"><%= visits.length %> visits &bull; <%= bills.length %> bills</span>
+        <a href="/lab-orders/new?patient_id=<%= patient.id %>" class="btn btn-sm btn-outline-primary ms-1"><i class="bi bi-eyedropper me-1"></i>Order Labs</a>
       </div>
     </div>
   </div>
