@@ -606,22 +606,40 @@ app.post('/bills/:id/pay', requireLogin, async (req, res) => {
   }
 });
 
-// Reports (admin only)
+// Reports (admin only). Defaults to the current day when no range is given.
+function dayStr(d) {
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function todayStr() {
+  return dayStr(new Date());
+}
 app.get('/reports', requireAdmin, async (req, res) => {
-  const params = {};
-  if (req.query.from) params.from = req.query.from;
-  if (req.query.to) params.to = req.query.to;
+  const from = req.query.from || todayStr();
+  const to = req.query.to || todayStr();
+  const params = { from, to };
+  const t = new Date();
+  const presets = {
+    today: todayStr(),
+    week: dayStr(new Date(t.getFullYear(), t.getMonth(), t.getDate() - 6)),
+    month: dayStr(new Date(t.getFullYear(), t.getMonth(), 1))
+  };
   try {
-    const [revenue, appts] = await Promise.all([
+    const [revenue, appts, bills] = await Promise.all([
       api.get('/reports/revenue', { params }).catch(() => ({ data: null })),
-      api.get('/reports/appointments', { params }).catch(() => ({ data: null }))
+      api.get('/reports/appointments', { params }).catch(() => ({ data: null })),
+      api.get('/bills').catch(() => ({ data: [] }))
     ]);
+    const bfrom = new Date(from), bto = new Date(to + 'T23:59:59');
+    const outstanding = bills.data
+      .filter(b => b.balance > 0 && (!b.created_at || (new Date(b.created_at) >= bfrom && new Date(b.created_at) <= bto)))
+      .sort((a, b) => b.balance - a.balance)
+      .slice(0, 10);
     res.render('reports', {
       revenue: revenue.data, appts: appts.data,
-      from: req.query.from || '', to: req.query.to || ''
+      outstanding, presets, from, to
     });
   } catch (err) {
-    res.render('reports', { revenue: null, appts: null, from: '', to: '' });
+    res.render('reports', { revenue: null, appts: null, outstanding: [], presets, from, to });
   }
 });
 

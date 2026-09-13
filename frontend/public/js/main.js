@@ -85,6 +85,74 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // Client-side pagination for tables with data-paginate (default 10 rows,
+  // page size selectable by the user). Works together with the search box.
+  document.querySelectorAll('table[data-paginate]').forEach(table => {
+    const tbody = table.querySelector('tbody');
+    if (!tbody) return;
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    const searchInput = table.parentElement.querySelector('.table-search');
+    const pager = document.createElement('div');
+    pager.className = 'table-pager';
+    const defaultSize = parseInt(table.getAttribute('data-page-size') || '10', 10);
+    pager.innerHTML =
+      '<span class="pager-info"></span>' +
+      '<label>Rows per page: <select class="pager-size">' +
+      [5, 10, 25, 50].map(n =>
+        `<option value="${n}"${n === defaultSize ? ' selected' : ''}>${n}</option>`
+      ).join('') +
+      '</select></label>' +
+      '<button type="button" class="pager-prev">&lsaquo; Prev</button>' +
+      '<span class="pager-pages"></span>' +
+      '<button type="button" class="pager-next">Next &rsaquo;</button>';
+    const host = table.closest('.card-body') || table.parentElement;
+    host.appendChild(pager);
+
+    let page = 1;
+    const sizeSel = pager.querySelector('.pager-size');
+    const info = pager.querySelector('.pager-info');
+    const pagesEl = pager.querySelector('.pager-pages');
+    const prevBtn = pager.querySelector('.pager-prev');
+    const nextBtn = pager.querySelector('.pager-next');
+    const perPage = () => parseInt(sizeSel.value, 10);
+
+    function render() {
+      const term = (searchInput ? searchInput.value : '').toLowerCase();
+      const filtered = rows.filter(r => r.textContent.toLowerCase().includes(term));
+      const pages = Math.max(1, Math.ceil(filtered.length / perPage()));
+      page = Math.min(Math.max(page, 1), pages);
+      rows.forEach(r => { r.style.display = 'none'; });
+      const start = (page - 1) * perPage();
+      filtered.slice(start, start + perPage()).forEach(r => { r.style.display = ''; });
+      const end = Math.min(start + perPage(), filtered.length);
+      info.textContent = `Showing ${filtered.length ? start + 1 : 0}\u2013${end} of ${filtered.length}`;
+      prevBtn.disabled = page <= 1;
+      nextBtn.disabled = page >= pages;
+      // Numbered buttons: window of up to 5 around current page
+      let from = Math.max(1, Math.min(page - 2, pages - 4));
+      let to = Math.min(pages, from + 4);
+      from = Math.max(1, to - 4);
+      pagesEl.innerHTML = '';
+      for (let n = from; n <= to; n++) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = n;
+        if (n === page) b.classList.add('current');
+        b.addEventListener('click', () => { page = n; render(); });
+        pagesEl.appendChild(b);
+      }
+      pager.style.display = rows.length ? '' : 'none';
+    }
+
+    prevBtn.addEventListener('click', () => { page--; render(); });
+    nextBtn.addEventListener('click', () => { page++; render(); });
+    sizeSel.addEventListener('change', () => { page = 1; render(); });
+    if (searchInput) {
+      searchInput.addEventListener('input', () => { page = 1; render(); });
+    }
+    render();
+  });
+
   const forms = document.querySelectorAll('form');
   forms.forEach(form => {
     form.addEventListener('submit', (e) => {

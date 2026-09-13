@@ -31,7 +31,7 @@ DEFAULT_LOOKUP_TYPES = [
     ('treatment_category', 'Treatment Categories', 'bi-capsule',
      'Categories for the treatment catalog', 'e.g. Physiotherapy', True),
     ('appointment_status', 'Appointment Status', 'bi-calendar-check',
-     'Workflow statuses for appointments', 'e.g. no-show', True),
+     'Workflow status for appointments', 'e.g. no-show', True),
     ('gender', 'Genders', 'bi-people', 'Patient gender options', '', False),
     ('blood_group', 'Blood Groups', 'bi-droplet', 'Blood group options', '', False),
     ('user_role', 'User Roles', 'bi-person-gear', 'Application user roles', '', False),

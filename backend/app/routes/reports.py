@@ -34,12 +34,19 @@ def revenue_data():
     collected = round(sum(b.amount_paid for b in bills), 2)
     by_status = {}
     by_day = {}
+    by_treatment = {}
+    by_method = {}
     for b in bills:
         by_status[b.status] = round(by_status.get(b.status, 0) + b.total, 2)
         day = b.created_at.date().isoformat() if b.created_at else 'unknown'
         d = by_day.setdefault(day, {'billed': 0.0, 'collected': 0.0})
         d['billed'] = round(d['billed'] + b.total, 2)
         d['collected'] = round(d['collected'] + b.amount_paid, 2)
+        tname = b.treatment.name if b.treatment else 'Unknown'
+        by_treatment[tname] = round(by_treatment.get(tname, 0) + b.total, 2)
+        for p in b.payments:
+            m = p.method or 'Unknown'
+            by_method[m] = round(by_method.get(m, 0) + p.amount, 2)
     return {
         'from': request.args.get('from'),
         'to': request.args.get('to'),
@@ -49,6 +56,8 @@ def revenue_data():
         'outstanding': round(total_billed - collected, 2),
         'by_status': by_status,
         'by_day': [{'date': k, **v} for k, v in sorted(by_day.items())],
+        'by_treatment': by_treatment,
+        'by_method': by_method,
     }
 
 
