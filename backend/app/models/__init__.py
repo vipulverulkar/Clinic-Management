@@ -3,4 +3,4 @@ from flask_sqlalchemy import SQLAlchemy
 
 db = SQLAlchemy()
 
-from app.models import appointment, bill, doctor, lookup, patient, setting, treatment, user  # noqa: E402,F401
+from app.models import appointment, bill, doctor, expense, lookup, patient, prescription, setting, treatment, user  # noqa: E402,F401

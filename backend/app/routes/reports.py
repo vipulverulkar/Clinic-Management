@@ -7,7 +7,9 @@ from flask import Blueprint, Response, jsonify, request
 
 from app.models.appointment import Appointment
 from app.models.bill import Bill
+from app.models.expense import Expense
 from app.models.patient import Patient
+from app.rbac import require_admin
 
 reports_bp = Blueprint('reports', __name__)
 
@@ -24,7 +26,7 @@ def _parse_range():
 
 def revenue_data():
     start, end = _parse_range()
-    query = Bill.query
+    query = Bill.query.filter(Bill.status != 'cancelled')
     if start:
         query = query.filter(Bill.created_at >= start)
     if end:
@@ -98,11 +100,13 @@ def _csv_response(filename, header, rows):
 
 
 @reports_bp.route('/api/reports/revenue', methods=['GET'])
+@require_admin
 def revenue_report():
     return jsonify(revenue_data())
 
 
 @reports_bp.route('/api/reports/revenue.csv', methods=['GET'])
+@require_admin
 def revenue_csv():
     data = revenue_data()
     rows = [[d['date'], d['billed'], d['collected']] for d in data['by_day']]
@@ -111,11 +115,13 @@ def revenue_csv():
 
 
 @reports_bp.route('/api/reports/appointments', methods=['GET'])
+@require_admin
 def appointments_report():
     return jsonify(appointments_data())
 
 
 @reports_bp.route('/api/reports/appointments.csv', methods=['GET'])
+@require_admin
 def appointments_csv():
     data = appointments_data()
     rows = [[k, v] for k, v in sorted(data['by_doctor'].items())]
@@ -123,9 +129,14 @@ def appointments_csv():
 
 
 @reports_bp.route('/api/reports/summary', methods=['GET'])
+@require_admin
 def summary():
+    expenses = round(sum(e.amount for e in Expense.query.all()), 2)
+    rev = revenue_data()
     return jsonify({
         'patients': Patient.query.count(),
-        'revenue': revenue_data(),
+        'revenue': rev,
         'appointments': appointments_data(),
+        'expenses_total': expenses,
+        'profit': round(rev['total_collected'] - expenses, 2),
     })

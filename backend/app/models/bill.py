@@ -12,6 +12,7 @@ class Bill(db.Model):
     treatment_id = db.Column(db.Integer, db.ForeignKey('treatment.id'), nullable=False)
     treatment_cost = db.Column(db.Float, nullable=False, default=0.0)
     consultation_fee = db.Column(db.Float, nullable=False, default=0.0)
+    discount_amount = db.Column(db.Float, nullable=False, default=0.0)
     tax_percent = db.Column(db.Float, nullable=False, default=0.0)
     tax_amount = db.Column(db.Float, nullable=False, default=0.0)
     total = db.Column(db.Float, nullable=False, default=0.0)
@@ -31,12 +32,23 @@ class Bill(db.Model):
         return round(self.total - self.amount_paid, 2)
 
     def refresh_status(self):
+        if self.status == 'cancelled':
+            return
         if self.amount_paid >= self.total:
             self.status = 'paid'
         elif self.amount_paid > 0:
             self.status = 'partial'
         else:
             self.status = 'unpaid'
+
+    def apply_discount(self, discount):
+        subtotal = (self.treatment_cost or 0) + (self.consultation_fee or 0)
+        discount = max(0.0, min(discount, subtotal))
+        taxable = subtotal - discount
+        self.discount_amount = round(discount, 2)
+        self.tax_amount = round(taxable * (self.tax_percent or 0) / 100, 2)
+        self.total = round(taxable + self.tax_amount, 2)
+        self.refresh_status()
 
     def to_dict(self, invoice_prefix='INV'):
         return {
@@ -51,6 +63,7 @@ class Bill(db.Model):
             'treatment_name': self.treatment.name if self.treatment else None,
             'treatment_cost': self.treatment_cost,
             'consultation_fee': self.consultation_fee,
+            'discount_amount': self.discount_amount,
             'tax_percent': self.tax_percent,
             'tax_amount': self.tax_amount,
             'total': self.total,

@@ -35,6 +35,7 @@
               <td><%= p.gender %></td>
               <td><%= p.created_at ? new Date(p.created_at).toLocaleDateString() : '' %></td>
               <td class="text-nowrap">
+                <a href="/patients/<%= p.id %>/timeline" class="btn btn-sm btn-outline-success" title="Timeline"><i class="bi bi-clock-history"></i></a>
                 <a href="/patients/<%= p.id %>/edit" class="btn btn-sm btn-outline-primary" title="Edit"><i class="bi bi-pencil"></i></a>
                 <form action="/patients/<%= p.id %>/delete" method="POST" class="d-inline" onsubmit="return confirm('Delete this patient?')">
                   <input type="hidden" name="_csrf" value="<%= csrfToken %>">

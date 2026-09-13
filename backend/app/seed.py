@@ -40,8 +40,29 @@ def default_lookup_value(lookup_type):
     return row.value if row else None
 
 
+def migrate_schema():
+    """Add missing columns to existing tables (SQLite has no DROP-safe ALTER)."""
+    from sqlalchemy import inspect, text
+    wanted = {
+        'appointment': {'chief_complaint': 'TEXT', 'diagnosis': 'TEXT',
+                        'vitals_bp': 'VARCHAR(20)', 'vitals_sugar': 'VARCHAR(20)',
+                        'vitals_weight': 'VARCHAR(20)', 'vitals_temp': 'VARCHAR(20)',
+                        'follow_up_date': 'DATE', 'token_no': 'INTEGER'},
+        'patient': {'emergency_contact': 'VARCHAR(20)', 'allergies': 'TEXT',
+                    'consent_captured': 'BOOLEAN DEFAULT 0'},
+        'bill': {'discount_amount': 'FLOAT DEFAULT 0'},
+    }
+    for table, cols in wanted.items():
+        existing = {c['name'] for c in inspect(db.engine).get_columns(table)}
+        for col, ddl in cols.items():
+            if col not in existing:
+                db.session.execute(text(f'ALTER TABLE {table} ADD COLUMN {col} {ddl}'))
+    db.session.commit()
+
+
 def seed_all():
     """Idempotent startup seed. Must be called inside an app context."""
+    migrate_schema()
     for i, item in enumerate(DEFAULT_LOOKUP_TYPES):
         if db.session.get(LookupType, item['type']) is None:
             db.session.add(LookupType(sort_order=i, **item))

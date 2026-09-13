@@ -2,7 +2,7 @@
   <div class="col-md-8">
     <div class="card">
       <div class="card-header form-card-header">
-        <h4 class="mb-0"><i class="bi bi-person-plus me-2"></i><%= patient ? 'Edit Patient' : 'Add New Patient' %></h4>
+        <h4 class="mb-0"><i class="bi bi-person-plus me-2"></i><%= patient ? 'Edit Patient' : 'Add New Patient' %><% if (patient?.id) { %> <span class="badge bg-light text-dark ms-1">PT-<%= String(patient.id).padStart(4, '0') %></span><% } %></h4>
       </div>
       <div class="card-body">
         <form action="<%= patient ? '/patients/' + patient.id : '/patients' %>" method="POST" id="patientForm">
@@ -54,6 +54,20 @@
           <div class="mb-3">
             <label class="form-label">Medical History</label>
             <textarea name="medical_history" class="form-control" rows="3"><%= patient?.medical_history || '' %></textarea>
+          </div>
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label class="form-label">Emergency Contact</label>
+              <input type="tel" name="emergency_contact" class="form-control" value="<%= patient?.emergency_contact || '' %>">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Allergies</label>
+              <input type="text" name="allergies" class="form-control" placeholder="e.g. Penicillin" value="<%= patient?.allergies || '' %>">
+            </div>
+          </div>
+          <div class="form-check mb-3">
+            <input type="checkbox" name="consent_captured" value="on" class="form-check-input" id="consentCheck" <%= patient?.consent_captured ? 'checked' : '' %>>
+            <label class="form-check-label" for="consentCheck">Treatment consent captured</label>
           </div>
           <div class="d-flex gap-2">
             <button type="submit" class="btn btn-primary">Save</button>

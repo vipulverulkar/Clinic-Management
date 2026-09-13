@@ -4,6 +4,7 @@ from flask import Blueprint, jsonify, request
 from app.models import db
 from app.models.appointment import Appointment
 from app.models.bill import Bill, Payment
+from app.rbac import require_admin
 from app.seed import get_setting
 
 bills_bp = Blueprint('bills', __name__)
@@ -86,3 +87,34 @@ def record_payment(id):
     db.session.add(payment)
     db.session.commit()
     return jsonify(_bill_payload(bill)), 201
+
+
+@bills_bp.route('/api/bills/<int:id>/discount', methods=['POST'])
+@require_admin
+def apply_discount(id):
+    bill = Bill.query.get_or_404(id)
+    if bill.status == 'cancelled':
+        return jsonify({'error': 'Bill is cancelled'}), 400
+    if bill.amount_paid > 0:
+        return jsonify({'error': 'Cannot discount a bill with payments recorded'}), 400
+    data = request.get_json() or {}
+    try:
+        discount = float(data.get('discount_amount', 0))
+    except (TypeError, ValueError):
+        return jsonify({'error': 'Invalid discount amount'}), 400
+    if discount < 0:
+        return jsonify({'error': 'Discount cannot be negative'}), 400
+    bill.apply_discount(discount)
+    db.session.commit()
+    return jsonify(_bill_payload(bill))
+
+
+@bills_bp.route('/api/bills/<int:id>/void', methods=['POST'])
+@require_admin
+def void_bill(id):
+    bill = Bill.query.get_or_404(id)
+    if bill.amount_paid > 0:
+        return jsonify({'error': 'Cannot void a bill with payments. Record a refund instead.'}), 400
+    bill.status = 'cancelled'
+    db.session.commit()
+    return jsonify(_bill_payload(bill))

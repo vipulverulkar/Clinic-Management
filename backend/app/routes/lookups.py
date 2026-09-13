@@ -9,6 +9,7 @@ from app.models.lookup import Lookup, LookupType
 from app.models.patient import Patient
 from app.models.treatment import Treatment
 from app.models.user import User
+from app.rbac import require_admin
 
 lookups_bp = Blueprint('lookups', __name__)
 
@@ -32,6 +33,7 @@ def get_lookup_types():
 
 
 @lookups_bp.route('/api/lookup-types/<string:lookup_type>', methods=['PUT'])
+@require_admin
 def update_lookup_type(lookup_type):
     item = LookupType.query.get_or_404(lookup_type)
     data = request.get_json() or {}
@@ -62,6 +64,7 @@ def get_lookup(id):
 
 
 @lookups_bp.route('/api/lookups', methods=['POST'])
+@require_admin
 def create_lookup():
     data = request.get_json() or {}
     lookup_type = (data.get('type') or '').strip()
@@ -79,6 +82,7 @@ def create_lookup():
 
 
 @lookups_bp.route('/api/lookups/<int:id>', methods=['PUT'])
+@require_admin
 def update_lookup(id):
     lookup = Lookup.query.get_or_404(id)
     data = request.get_json() or {}
@@ -93,6 +97,7 @@ def update_lookup(id):
 
 
 @lookups_bp.route('/api/lookups/<int:id>', methods=['DELETE'])
+@require_admin
 def delete_lookup(id):
     lookup = Lookup.query.get_or_404(id)
     ref = REFERENCES.get(lookup.type)

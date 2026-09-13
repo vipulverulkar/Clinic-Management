@@ -909,6 +909,33 @@ a .quick-action {
   border-color: transparent;
 }
 
+/* ---------- Sidebar search ---------- */
+.sidebar-search {
+  border-radius: 10px;
+  font-size: 0.85rem;
+}
+
+/* ---------- Toast notifications ---------- */
+.toast-fixed {
+  position: fixed;
+  bottom: 1.25rem;
+  right: 1.25rem;
+  z-index: 2000;
+  border-radius: 12px;
+  box-shadow: var(--card-shadow-hover);
+  border: none;
+  font-weight: 600;
+  animation: toastIn 0.3s ease-out, toastOut 0.5s ease-in 3.5s forwards;
+  max-width: min(90vw, 360px);
+}
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes toastOut {
+  to { opacity: 0; transform: translateY(10px); }
+}
+
 /* ---------- Print (lists & invoices) ---------- */
 /* Zero page margin suppresses the browser header/footer (URL, IP, date) */
 @page {

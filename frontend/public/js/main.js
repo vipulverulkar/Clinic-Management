@@ -60,6 +60,11 @@ document.addEventListener('DOMContentLoaded', () => {
     link.addEventListener('click', () => document.body.classList.remove('sidebar-open'));
   });
 
+  // Auto-dismiss toast notifications
+  setTimeout(() => {
+    document.querySelectorAll('.toast-fixed').forEach(t => t.remove());
+  }, 4200);
+
   // Highlight active nav link based on current path
   const currentPath = window.location.pathname;
   document.querySelectorAll('.sidebar-link[href], .navbar-nav .nav-link[href]').forEach(link => {

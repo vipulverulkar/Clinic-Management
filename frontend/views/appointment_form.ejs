@@ -60,6 +60,45 @@
             <label class="form-label">Notes</label>
             <textarea name="notes" class="form-control" rows="3"><%= appointment?.notes || '' %></textarea>
           </div>
+          <div class="card mb-3">
+            <div class="card-header"><i class="bi bi-clipboard-pulse me-1"></i>Clinical Notes <span class="text-muted fw-normal small">(can also be filled during consult)</span></div>
+            <div class="card-body">
+              <div class="row mb-3">
+                <div class="col-md-6">
+                  <label class="form-label">Chief Complaint</label>
+                  <textarea name="chief_complaint" class="form-control" rows="2"><%= appointment?.chief_complaint || '' %></textarea>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Diagnosis</label>
+                  <textarea name="diagnosis" class="form-control" rows="2"><%= appointment?.diagnosis || '' %></textarea>
+                </div>
+              </div>
+              <div class="row mb-3">
+                <div class="col-md-3">
+                  <label class="form-label">BP</label>
+                  <input type="text" name="vitals_bp" class="form-control" placeholder="120/80" value="<%= appointment?.vitals_bp || '' %>">
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label">Sugar</label>
+                  <input type="text" name="vitals_sugar" class="form-control" placeholder="mg/dL" value="<%= appointment?.vitals_sugar || '' %>">
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label">Weight (kg)</label>
+                  <input type="text" name="vitals_weight" class="form-control" value="<%= appointment?.vitals_weight || '' %>">
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label">Temp (°F)</label>
+                  <input type="text" name="vitals_temp" class="form-control" value="<%= appointment?.vitals_temp || '' %>">
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-md-6">
+                  <label class="form-label">Follow-up Date</label>
+                  <input type="date" name="follow_up_date" class="form-control" value="<%= appointment?.follow_up_date ? appointment.follow_up_date.slice(0, 10) : '' %>">
+                </div>
+              </div>
+            </div>
+          </div>
           <div class="d-flex gap-2">
             <button type="submit" class="btn btn-primary">Save</button>
             <a href="/appointments" class="btn btn-secondary">Cancel</a>

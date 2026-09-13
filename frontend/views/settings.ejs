@@ -70,3 +70,31 @@
     </div>
   </div>
 </div>
+
+<% if (typeof restore_error !== 'undefined' && restore_error) { %>
+  <div class="alert alert-danger d-flex align-items-center mt-3" role="alert">
+    <i class="bi bi-exclamation-triangle-fill me-2"></i><%= restore_error %>
+  </div>
+<% } %>
+
+<div class="row justify-content-center mt-4">
+  <div class="col-md-8">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-hdd-stack me-1"></i>Backup &amp; Restore</div>
+      <div class="card-body">
+        <p class="text-muted">Download a full database snapshot, or restore from a previous backup file. Restoring replaces all current data.</p>
+        <div class="d-flex flex-wrap gap-3 align-items-end">
+          <a href="/settings/backup" class="btn btn-outline-success"><i class="bi bi-download me-1"></i>Download Backup</a>
+          <form action="/settings/restore" method="POST" enctype="multipart/form-data" class="d-flex gap-2 align-items-end" onsubmit="return confirm('Restore will REPLACE all current data. Continue?')">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <div>
+              <label class="form-label">Backup file (.sql / .db)</label>
+              <input type="file" name="backup" class="form-control" accept=".sql,.db" required>
+            </div>
+            <button type="submit" class="btn btn-outline-danger"><i class="bi bi-upload me-1"></i>Restore</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

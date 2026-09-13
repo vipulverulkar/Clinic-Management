@@ -165,6 +165,19 @@ Additional users can be created via `POST /api/auth/register`.
 - `GET /api/audit` - Audit trail (optional `?entity=&action=&limit=`)
 - `GET /api/reports/revenue`, `/appointments`, `/summary` (+ `.csv` exports)
 
+### Clinical
+- `PUT /api/appointments/:id` - Now also saves vitals, diagnosis, follow-up date
+- `GET/POST /api/appointments/:id/prescriptions` - Prescription items
+- `PUT/DELETE /api/prescriptions/:id` - Edit/remove prescribed medicine
+
+### Operations
+- `GET /api/expenses`, `POST /api/expenses`, `DELETE /api/expenses/:id`
+- `GET /api/search?q=` - Global search across patients, doctors, treatments, bills
+- `GET /api/backup` / `POST /api/restore` - SQLite snapshot download/upload (admin)
+- `GET /api/sessions` / `DELETE /api/sessions/:sid` - Active login sessions (admin)
+- `PUT /api/users/:id/password` - Change password (self or admin)
+- `POST /api/bills/:id/discount`, `/api/bills/:id/void` - Discount and void (admin)
+
 ### Patients
 - `GET /api/patients` - List all patients
 - `GET /api/patients/:id` - Get patient by ID

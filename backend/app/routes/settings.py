@@ -3,6 +3,7 @@ from flask import Blueprint, jsonify, request
 
 from app.models import db
 from app.models.setting import Setting
+from app.rbac import require_admin
 from app.seed import DEFAULT_SETTINGS
 
 settings_bp = Blueprint('settings', __name__)
@@ -18,10 +19,11 @@ def get_settings():
 
 
 @settings_bp.route('/api/settings', methods=['PUT'])
+@require_admin
 def update_settings():
     data = request.get_json() or {}
     for key, value in data.items():
-        if not isinstance(key, str) or len(key) > 80:
+        if not isinstance(key, str) or len(key) > 80 or key.startswith('_'):
             continue
         row = db.session.get(Setting, key)
         if row is None:

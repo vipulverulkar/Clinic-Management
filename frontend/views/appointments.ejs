@@ -13,6 +13,7 @@
         <thead>
           <tr>
             <th>ID</th>
+            <th>Token</th>
             <th>Patient</th>
             <th>Doctor</th>
             <th>Treatment</th>
@@ -27,6 +28,7 @@
           <% appointments.forEach(a => { %>
             <tr>
               <td><%= a.id %></td>
+              <td><% if (a.token_no) { %><span class="badge bg-primary"><%= a.token_no %></span><% } else { %>-<% } %></td>
               <td><span class="avatar avatar-amber"><%= ((a.patient_name || '?')).charAt(0).toUpperCase() %></span><%= a.patient_name || 'N/A' %></td>
               <td><%= a.doctor_name || 'N/A' %></td>
               <td><%= a.treatment_name || 'N/A' %></td>
@@ -39,6 +41,7 @@
               </td>
               <td><%= a.notes || '' %></td>
               <td class="text-nowrap">
+                <a href="/appointments/<%= a.id %>/consult" class="btn btn-sm btn-outline-success" title="Consult"><i class="bi bi-clipboard-pulse"></i></a>
                 <a href="/appointments/<%= a.id %>/edit" class="btn btn-sm btn-outline-primary" title="Edit"><i class="bi bi-pencil"></i></a>
                 <form action="/appointments/<%= a.id %>/delete" method="POST" class="d-inline" onsubmit="return confirm('Delete this appointment?')">
                   <input type="hidden" name="_csrf" value="<%= csrfToken %>">

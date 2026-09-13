@@ -43,7 +43,7 @@ app.use((req, res, next) => {
   next();
 });
 app.use((req, res, next) => {
-  if (req.method === 'POST' && (!req.body || req.body._csrf !== req.session.csrf)) {
+  if (req.method === 'POST' && !String(req.headers['content-type'] || '').includes('multipart/form-data') && (!req.body || req.body._csrf !== req.session.csrf)) {
     return res.status(403).send('Invalid CSRF token');
   }
   next();
@@ -55,6 +55,12 @@ app.use((req, res, next) => {
   next();
 });
 
+// Toast messages: one-shot notices set in session by POST handlers
+app.use((req, res, next) => {
+  res.locals.toast = (req.session && req.session.toast) || null;
+  if (req.session) delete req.session.toast;
+  next();
+});
 // Clinic profile (DB settings) available in all views, refreshed every minute
 let clinicCache = { ts: 0, data: null };
 async function clinicSettings() {
@@ -120,20 +126,22 @@ app.get('/', (req, res) => res.redirect('/dashboard'));
 
 app.get('/dashboard', async (req, res) => {
   try {
-    const [patients, doctors, treatments, appointments] = await Promise.all([
+    const [patients, doctors, treatments, appointments, bills] = await Promise.all([
       api.get('/patients').catch(() => ({ data: [] })),
       api.get('/doctors').catch(() => ({ data: [] })),
       api.get('/treatments').catch(() => ({ data: [] })),
-      api.get('/appointments').catch(() => ({ data: [] }))
+      api.get('/appointments').catch(() => ({ data: [] })),
+      api.get('/bills').catch(() => ({ data: [] }))
     ]);
     res.render('dashboard', {
       patients: patients.data,
       doctors: doctors.data,
       treatments: treatments.data,
-      appointments: appointments.data
+      appointments: appointments.data,
+      bills: bills.data
     });
   } catch (err) {
-    res.render('dashboard', { patients: [], doctors: [], treatments: [], appointments: [] });
+    res.render('dashboard', { patients: [], doctors: [], treatments: [], appointments: [], bills: [] });
   }
 });
 
@@ -163,6 +171,7 @@ app.get('/patients/:id/edit', async (req, res) => {
 app.post('/patients', async (req, res) => {
   try {
     await apiFor(req).post('/patients', req.body);
+    req.session.toast = 'Patient added';
     res.redirect('/patients');
   } catch (err) {
     res.status(500).send('Error creating patient');
@@ -213,6 +222,7 @@ app.get('/doctors/:id/edit', async (req, res) => {
 app.post('/doctors', async (req, res) => {
   try {
     await apiFor(req).post('/doctors', req.body);
+    req.session.toast = 'Doctor added';
     res.redirect('/doctors');
   } catch (err) {
     res.status(500).send('Error creating doctor');
@@ -263,6 +273,7 @@ app.get('/treatments/:id/edit', async (req, res) => {
 app.post('/treatments', async (req, res) => {
   try {
     await apiFor(req).post('/treatments', req.body);
+    req.session.toast = 'Treatment added';
     res.redirect('/treatments');
   } catch (err) {
     res.status(500).send('Error creating treatment');
@@ -338,6 +349,7 @@ app.get('/appointments/:id/edit', async (req, res) => {
 app.post('/appointments', async (req, res) => {
   try {
     await apiFor(req).post('/appointments', req.body);
+    req.session.toast = 'Appointment booked';
     res.redirect('/appointments');
   } catch (err) {
     res.status(500).send('Error creating appointment');
@@ -507,6 +519,7 @@ app.get('/users/:id/edit', requireAdmin, async (req, res) => {
 app.post('/users', requireAdmin, async (req, res) => {
   try {
     await apiFor(req).post('/auth/register', req.body);
+    req.session.toast = 'User created';
     res.redirect('/users');
   } catch (err) {
     const msg = (err.response && err.response.data && err.response.data.error)
@@ -571,6 +584,7 @@ app.get('/bills', requireLogin, async (req, res) => {
 app.post('/bills/generate', requireLogin, async (req, res) => {
   try {
     const { data } = await apiFor(req).post('/bills', { appointment_id: req.body.appointment_id });
+    req.session.toast = 'Bill ' + data.bill_no + ' generated';
     res.redirect(`/bills/${data.id}`);
   } catch (err) {
     const msg = (err.response && err.response.data && err.response.data.error)
@@ -592,6 +606,7 @@ app.get('/bills/:id', requireLogin, async (req, res) => {
 app.post('/bills/:id/pay', requireLogin, async (req, res) => {
   try {
     await apiFor(req).post(`/bills/${req.params.id}/payments`, req.body);
+    req.session.toast = 'Payment recorded';
     res.redirect(`/bills/${req.params.id}`);
   } catch (err) {
     const msg = (err.response && err.response.data && err.response.data.error)
@@ -672,9 +687,9 @@ app.get('/audit', requireAdmin, async (req, res) => {
 app.get('/settings', requireAdmin, async (req, res) => {
   try {
     const { data } = await api.get('/settings');
-    res.render('settings', { settings: data, saved: req.query.saved || null });
+    res.render('settings', { settings: data, saved: req.query.saved || null, restore_error: req.query.restore_error || null });
   } catch (err) {
-    res.render('settings', { settings: {}, saved: null });
+    res.render('settings', { settings: {}, saved: null, restore_error: null });
   }
 });
 
@@ -685,6 +700,289 @@ app.post('/settings', requireAdmin, async (req, res) => {
     res.redirect('/settings?saved=1');
   } catch (err) {
     res.status(500).send('Error saving settings');
+  }
+});
+
+// Clinical consult (staff + admin)
+app.get('/appointments/:id/consult', requireLogin, async (req, res) => {
+  try {
+    const [{ data: appointment }, { data: prescriptions }] = await Promise.all([
+      api.get(`/appointments/${req.params.id}`),
+      api.get(`/appointments/${req.params.id}/prescriptions`).catch(() => ({ data: [] }))
+    ]);
+    res.render('consult', { appointment, prescriptions, error: req.query.error || null });
+  } catch (err) {
+    res.redirect('/appointments');
+  }
+});
+
+app.post('/appointments/:id/consult', requireLogin, async (req, res) => {
+  try {
+    await apiFor(req).put(`/appointments/${req.params.id}`, req.body);
+    req.session.toast = 'Clinical notes saved';
+    res.redirect(`/appointments/${req.params.id}/consult`);
+  } catch (err) {
+    const msg = (err.response && err.response.data && err.response.data.error)
+      || 'Error saving clinical notes';
+    res.redirect(`/appointments/${req.params.id}/consult?error=` + encodeURIComponent(msg));
+  }
+});
+
+app.post('/appointments/:id/prescriptions', requireLogin, async (req, res) => {
+  try {
+    await apiFor(req).post(`/appointments/${req.params.id}/prescriptions`, req.body);
+    req.session.toast = 'Medicine added';
+    res.redirect(`/appointments/${req.params.id}/consult`);
+  } catch (err) {
+    const msg = (err.response && err.response.data && err.response.data.error)
+      || 'Error adding medicine';
+    res.redirect(`/appointments/${req.params.id}/consult?error=` + encodeURIComponent(msg));
+  }
+});
+
+app.post('/prescriptions/:id/delete', requireLogin, async (req, res) => {
+  const backId = req.body.appointment_id;
+  try {
+    await apiFor(req).delete(`/prescriptions/${req.params.id}`);
+  } catch (err) {}
+  res.redirect(backId ? `/appointments/${backId}/consult` : '/appointments');
+});
+
+// Patient timeline: visits + bills together
+app.get('/patients/:id/timeline', requireLogin, async (req, res) => {
+  try {
+    const [{ data: patient }, { data: appointments }, { data: bills }] = await Promise.all([
+      api.get(`/patients/${req.params.id}`),
+      api.get('/appointments').catch(() => ({ data: [] })),
+      api.get('/bills').catch(() => ({ data: [] }))
+    ]);
+    res.render('patient_timeline', {
+      patient,
+      visits: appointments.filter(a => String(a.patient_id) === String(req.params.id)),
+      bills: bills.filter(b => String(b.patient_id) === String(req.params.id))
+    });
+  } catch (err) {
+    res.redirect('/patients');
+  }
+});
+
+// Global search
+app.get('/search', requireLogin, async (req, res) => {
+  const q = (req.query.q || '').trim();
+  let results = { patients: [], doctors: [], treatments: [], bills: [] };
+  if (q.length >= 2) {
+    try {
+      ({ data: results } = await api.get('/search', { params: { q } }));
+    } catch (err) {}
+  }
+  res.render('search', { q, results });
+});
+
+// Calendar (server-rendered month grid)
+app.get('/calendar', requireLogin, async (req, res) => {
+  const m = /^(\d{4})-(\d{2})$/.test(req.query.month || '') ? req.query.month : todayStr().slice(0, 7);
+  const [y, mo] = m.split('-').map(Number);
+  const first = new Date(y, mo - 1, 1);
+  const { data: appointments } = await api.get('/appointments').catch(() => ({ data: [] }));
+  const byDay = {};
+  appointments.forEach(a => {
+    const d = (a.appointment_date || '').slice(0, 10);
+    if (d.startsWith(m)) (byDay[d] = byDay[d] || []).push(a);
+  });
+  const weeks = [];
+  let week = [];
+  for (let i = 0; i < first.getDay(); i++) week.push({});
+  const daysInMonth = new Date(y, mo, 0).getDate();
+  for (let d = 1; d <= daysInMonth; d++) {
+    const key = `${m}-${String(d).padStart(2, '0')}`;
+    week.push({ date: key, num: d, items: byDay[key] || [], today: key === todayStr() });
+    if (week.length === 7) { weeks.push(week); week = []; }
+  }
+  if (week.length) {
+    while (week.length < 7) week.push({});
+    weeks.push(week);
+  }
+  const selectedDay = req.query.day && req.query.day.startsWith(m) ? req.query.day : null;
+  res.render('calendar', {
+    weeks, month: m,
+    prev: dayStr(new Date(y, mo - 2, 1)).slice(0, 7),
+    next: dayStr(new Date(y, mo, 1)).slice(0, 7),
+    monthLabel: first.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }),
+    selectedDay, dayItems: selectedDay ? (byDay[selectedDay] || []) : []
+  });
+});
+
+// Follow-ups due (overdue + next 7 days, open visits)
+app.get('/followups', requireLogin, async (req, res) => {
+  const { data: appointments } = await api.get('/appointments').catch(() => ({ data: [] }));
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const horizon = new Date(now.getTime() + 7 * 864e5);
+  const items = appointments
+    .filter(a => a.follow_up_date && !['completed', 'cancelled'].includes(a.status))
+    .map(a => ({ ...a, overdue: new Date(a.follow_up_date) < now }))
+    .filter(a => new Date(a.follow_up_date) <= horizon)
+    .sort((a, b) => new Date(a.follow_up_date) - new Date(b.follow_up_date));
+  res.render('followups', { items });
+});
+
+// Expenses (admin only)
+app.get('/expenses', requireAdmin, async (req, res) => {
+  try {
+    const { data } = await api.get('/expenses');
+    res.render('expenses', {
+      expenses: data,
+      total: Math.round(data.reduce((s, e) => s + (e.amount || 0), 0)),
+      error: req.query.error || null
+    });
+  } catch (err) {
+    res.render('expenses', { expenses: [], total: 0, error: 'Could not load expenses' });
+  }
+});
+
+app.post('/expenses', requireAdmin, async (req, res) => {
+  try {
+    await apiFor(req).post('/expenses', req.body);
+    req.session.toast = 'Expense recorded';
+  } catch (err) {
+    req.session.toast = null;
+    const msg = (err.response && err.response.data && err.response.data.error) || 'Error saving expense';
+    return res.redirect('/expenses?error=' + encodeURIComponent(msg));
+  }
+  res.redirect('/expenses');
+});
+
+app.post('/expenses/:id/delete', requireAdmin, async (req, res) => {
+  try {
+    await apiFor(req).delete(`/expenses/${req.params.id}`);
+    req.session.toast = 'Expense deleted';
+  } catch (err) {}
+  res.redirect('/expenses');
+});
+
+// Bill discount / void (admin only)
+app.post('/bills/:id/discount', requireAdmin, async (req, res) => {
+  try {
+    await apiFor(req).post(`/bills/${req.params.id}/discount`, req.body);
+    req.session.toast = 'Discount applied';
+    res.redirect(`/bills/${req.params.id}`);
+  } catch (err) {
+    const msg = (err.response && err.response.data && err.response.data.error) || 'Error applying discount';
+    try {
+      const { data } = await api.get(`/bills/${req.params.id}`);
+      const methods = await lookupValues('payment_method');
+      res.status(400).render('invoice', { bill: data, methods, error: msg });
+    } catch (e) {
+      res.redirect('/bills');
+    }
+  }
+});
+
+app.post('/bills/:id/void', requireAdmin, async (req, res) => {
+  try {
+    await apiFor(req).post(`/bills/${req.params.id}/void`);
+    req.session.toast = 'Bill voided';
+  } catch (err) {
+    const msg = (err.response && err.response.data && err.response.data.error) || 'Error voiding bill';
+    return res.redirect(`/bills/${req.params.id}`);
+  }
+  res.redirect('/bills');
+});
+
+// Payment receipt (printable)
+app.get('/bills/:billId/receipts/:payId', requireLogin, async (req, res) => {
+  try {
+    const { data: bill } = await api.get(`/bills/${req.params.billId}`);
+    const payment = (bill.payments || []).find(p => String(p.id) === String(req.params.payId));
+    if (!payment) return res.redirect(`/bills/${req.params.billId}`);
+    res.render('receipt', { bill, payment });
+  } catch (err) {
+    res.redirect('/bills');
+  }
+});
+
+// Active sessions (admin only)
+function currentSid(req) {
+  const raw = req.headers.cookie || '';
+  const m = raw.match(/connect\.sid=s(?:%3A|:)([^.]+)\./);
+  return m ? decodeURIComponent(m[1]) : null;
+}
+
+app.get('/sessions', requireAdmin, async (req, res) => {
+  try {
+    const { data } = await api.get('/sessions');
+    res.render('sessions', { sessions: data, currentSid: currentSid(req) });
+  } catch (err) {
+    res.render('sessions', { sessions: [], currentSid: currentSid(req) });
+  }
+});
+
+app.post('/sessions/:sid/revoke', requireAdmin, async (req, res) => {
+  try {
+    await apiFor(req).delete(`/sessions/${req.params.sid}`);
+    req.session.toast = 'Session revoked';
+  } catch (err) {}
+  res.redirect('/sessions');
+});
+
+// Change own password
+app.get('/change-password', requireLogin, (req, res) => {
+  res.render('change-password', {
+    error: null, done: req.query.done || null,
+    minLen: (res.locals.clinic && res.locals.clinic.password_min_length) || '8'
+  });
+});
+
+app.post('/change-password', requireLogin, async (req, res) => {
+  const minLen = (res.locals.clinic && res.locals.clinic.password_min_length) || '8';
+  if (req.body.new_password !== req.body.confirm_password) {
+    return res.status(400).render('change-password', { error: 'New passwords do not match', done: null, minLen });
+  }
+  try {
+    await apiFor(req).put(`/users/${req.session.user.id}/password`, {
+      current_password: req.body.current_password,
+      new_password: req.body.new_password
+    });
+    req.session.toast = 'Password changed';
+    res.redirect('/dashboard');
+  } catch (err) {
+    const msg = (err.response && err.response.data && err.response.data.error) || 'Error changing password';
+    res.status(400).render('change-password', { error: msg, done: null, minLen });
+  }
+});
+
+// Help
+app.get('/help', requireLogin, (req, res) => res.render('help'));
+
+// Backup download + restore upload (admin only)
+app.get('/settings/backup', requireAdmin, async (req, res) => {
+  try {
+    const r = await apiFor(req).get('/backup', { responseType: 'arraybuffer' });
+    res.set('Content-Type', 'application/sql');
+    res.set('Content-Disposition', r.headers['content-disposition'] || 'attachment; filename=clinic-backup.sql');
+    res.send(Buffer.from(r.data));
+  } catch (err) {
+    res.redirect('/settings?restore_error=' + encodeURIComponent('Backup failed'));
+  }
+});
+
+const multer = require('multer');
+const _upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
+
+app.post('/settings/restore', requireAdmin, _upload.single('backup'), async (req, res) => {
+  if (!req.body || req.body._csrf !== req.session.csrf) {
+    return res.status(403).send('Invalid CSRF token');
+  }
+  try {
+    if (!req.file) throw new Error('nofile');
+    const fd = new FormData();
+    fd.append('backup', new Blob([req.file.buffer]), req.file.originalname);
+    await apiFor(req).post('/restore', fd);
+    req.session.toast = 'Backup restored successfully';
+    res.redirect('/settings');
+  } catch (err) {
+    const msg = (err.response && err.response.data && err.response.data.error) || 'Restore failed';
+    res.redirect('/settings?restore_error=' + encodeURIComponent(msg));
   }
 });
 

@@ -41,7 +41,10 @@ def create_patient():
         dob=dob,
         gender=data.get('gender'),
         blood_group=data.get('blood_group'),
-        medical_history=data.get('medical_history')
+        medical_history=data.get('medical_history'),
+        emergency_contact=data.get('emergency_contact'),
+        allergies=data.get('allergies'),
+        consent_captured=data.get('consent_captured') in (True, 'on', 'true', '1', 1)
     )
     db.session.add(patient)
     db.session.commit()
@@ -64,6 +67,10 @@ def update_patient(id):
     patient.gender = data.get('gender', patient.gender)
     patient.blood_group = data.get('blood_group', patient.blood_group)
     patient.medical_history = data.get('medical_history', patient.medical_history)
+    patient.emergency_contact = data.get('emergency_contact', patient.emergency_contact)
+    patient.allergies = data.get('allergies', patient.allergies)
+    if 'consent_captured' in data:
+        patient.consent_captured = data.get('consent_captured') in (True, 'on', 'true', '1', 1)
     db.session.commit()
     return jsonify(patient.to_dict())
 

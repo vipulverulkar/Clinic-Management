@@ -2,11 +2,13 @@
 from flask import Blueprint, jsonify, request
 
 from app.models.setting import AuditLog
+from app.rbac import require_admin
 
 audit_bp = Blueprint('audit', __name__)
 
 
 @audit_bp.route('/api/audit', methods=['GET'])
+@require_admin
 def get_audit():
     entity = request.args.get('entity')
     action = request.args.get('action')

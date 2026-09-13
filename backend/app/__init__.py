@@ -23,7 +23,9 @@ def create_app():
 
     @app.before_request
     def _api_guard():
+        from app.rbac import current_role
         g.actor = request.headers.get('X-User', 'system')
+        g.role = current_role()
         if not request.path.startswith('/api/') or request.path == '/api/health':
             return None
         if request.headers.get('X-API-Key') != app.config['API_KEY']:
