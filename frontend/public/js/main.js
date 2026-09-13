@@ -1,17 +1,10 @@
 document.addEventListener('DOMContentLoaded', () => {
-  // Multi-theme system: preset id persisted in localStorage,
-  // applied as data-bs-theme + data-accent on <html>
-  const THEMES = [
-    { id: 'ocean-light',  name: 'Ocean Light',  icon: 'bi-sun',            bs: 'light', accent: 'blue' },
-    { id: 'ocean-dark',   name: 'Ocean Dark',   icon: 'bi-moon-stars',     bs: 'dark',  accent: 'blue' },
-    { id: 'teal-light',   name: 'Teal Light',   icon: 'bi-brightness-high', bs: 'light', accent: 'teal' },
-    { id: 'forest-dark',  name: 'Forest Dark',  icon: 'bi-tree',           bs: 'dark',  accent: 'green' },
-    { id: 'royal-dark',   name: 'Royal Dark',   icon: 'bi-gem',            bs: 'dark',  accent: 'violet' },
-    { id: 'sunset-light', name: 'Sunset Light', icon: 'bi-sunset',         bs: 'light', accent: 'orange' },
-    { id: 'rose-light',   name: 'Rose Light',   icon: 'bi-heart',          bs: 'light', accent: 'rose' },
-    { id: 'graphite-dark', name: 'Graphite Dark', icon: 'bi-circle-half',  bs: 'dark',  accent: 'slate' },
-    { id: 'cyan-dark',    name: 'Cyan Dark',    icon: 'bi-droplet',        bs: 'dark',  accent: 'cyan' },
-    { id: 'mint-light',   name: 'Mint Light',   icon: 'bi-flower1',        bs: 'light', accent: 'mint' }
+  // Multi-theme system: presets loaded from /config/themes.json,
+  // selected id persisted in localStorage, applied as
+  // data-bs-theme + data-accent on <html>
+  let THEMES = [
+    { id: 'ocean-light', name: 'Ocean Light', icon: 'bi-sun', bs: 'light', accent: 'blue' },
+    { id: 'ocean-dark', name: 'Ocean Dark', icon: 'bi-moon-stars', bs: 'dark', accent: 'blue' }
   ];
   const themeMenus = document.querySelectorAll('.themeMenu');
   const currentThemeId = () => {
@@ -44,6 +37,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
   applyTheme(currentThemeId());
+  fetch('/config/themes.json')
+    .then(r => { if (!r.ok) throw new Error('themes config missing'); return r.json(); })
+    .then(list => {
+      if (Array.isArray(list) && list.length) {
+        THEMES = list;
+        applyTheme(currentThemeId());
+      }
+    })
+    .catch(() => {});
 
   // Mobile sidebar drawer
   const sidebarToggle = document.getElementById('sidebarToggle');

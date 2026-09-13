@@ -28,7 +28,7 @@
           </div>
           <div class="mb-3">
             <label class="form-label">Password <%= targetUser ? '(leave blank to keep current)' : '*' %></label>
-            <input type="password" name="password" class="form-control" minlength="8" placeholder="<%= targetUser ? 'New password (optional)' : 'Enter password' %>" <%= targetUser ? '' : 'required' %>>
+            <input type="password" name="password" class="form-control" minlength="<%= (typeof clinic !== 'undefined' && clinic.password_min_length) || '8' %>" placeholder="<%= targetUser ? 'New password (optional)' : 'Enter password' %>" <%= targetUser ? '' : 'required' %>>
           </div>
           <div class="d-flex gap-2">
             <button type="submit" class="btn btn-primary">Save</button>

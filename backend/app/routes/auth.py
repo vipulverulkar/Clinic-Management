@@ -8,21 +8,19 @@ from app.audit import log_action
 from app.models import db
 from app.models.setting import LoginAttempt
 from app.models.user import User
-from app.seed import default_lookup_value
+from app.seed import default_lookup_value, get_int_setting
 
 auth_bp = Blueprint('auth', __name__)
 
-# DB-backed login rate limit: 5 failed attempts per IP per 5 minutes.
-_MAX_ATTEMPTS = 5
-_WINDOW = timedelta(minutes=5)
-
 
 def _limited(ip):
-    cutoff = datetime.utcnow() - _WINDOW
+    max_attempts = get_int_setting('rate_limit_max_attempts', 5)
+    window = timedelta(minutes=get_int_setting('rate_limit_window_minutes', 5))
+    cutoff = datetime.utcnow() - window
     LoginAttempt.query.filter(LoginAttempt.attempted_at < cutoff).delete()
     db.session.commit()
     return LoginAttempt.query.filter_by(ip=ip).filter(
-        LoginAttempt.attempted_at >= cutoff).count() >= _MAX_ATTEMPTS
+        LoginAttempt.attempted_at >= cutoff).count() >= max_attempts
 
 
 @auth_bp.route('/api/auth/register', methods=['POST'])
@@ -32,8 +30,9 @@ def register():
     password = data.get('password') or ''
     if not username or not password:
         return jsonify({'error': 'Username and password are required'}), 400
-    if len(password) < 8:
-        return jsonify({'error': 'Password must be at least 8 characters'}), 400
+    min_length = get_int_setting('password_min_length', 8)
+    if len(password) < min_length:
+        return jsonify({'error': f'Password must be at least {min_length} characters'}), 400
     if User.query.filter_by(username=username).first():
         return jsonify({'error': 'Username already exists'}), 409
     user = User(username=username,
