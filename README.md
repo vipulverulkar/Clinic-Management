@@ -57,6 +57,26 @@ Clinic_Mgmt/
 - Python 3.8+
 - Node.js 18+ (for frontend)
 
+No Docker needed. The launchers below install these automatically when
+they are missing (Windows via `winget`, Linux via `apt`/`dnf`/`pacman`
+with `sudo`) - internet access is required on first run only.
+
+## Standalone Quick Start (Windows / Linux, no Docker)
+
+**Windows:** double-click `start-windows.bat`. It checks for Python 3.8+
+and Node.js 18+ (installing them via `winget` if absent), creates
+`backend\venv`, installs all dependencies, starts the backend
+(`http://localhost:5001`) and frontend (`http://localhost:3000`) in
+their own windows, and opens the app in your browser. Stop everything
+with `stop-windows.bat` (or just close the two windows).
+
+**Linux:** run `./start.sh` (same flow as Windows, in one terminal;
+stop with `Ctrl+C`).
+
+On first run the backend database is created and seeded automatically.
+Default login is `admin` / `admin123` (override the seeded admin with
+the `ADMIN_USERNAME` / `ADMIN_PASSWORD` env vars before the first run).
+
 ## Installation & Running
 
 Development: `./start.sh` (Flask reloader + dev sessions).

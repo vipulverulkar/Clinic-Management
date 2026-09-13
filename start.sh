@@ -5,8 +5,39 @@ echo "Starting Clinic Management System..."
 
 # Ensure Node.js is on PATH (installed at ~/.local/node/bin on this machine)
 export PATH="$HOME/.local/node/bin:$PATH"
-command -v node >/dev/null 2>&1 || { echo "ERROR: node not found. Install Node.js 18+ first."; exit 1; }
-command -v python3 >/dev/null 2>&1 || { echo "ERROR: python3 not found."; exit 1; }
+
+# Try to install missing system packages via the distro package manager.
+install_pkgs() {
+  if command -v apt-get >/dev/null 2>&1; then
+    sudo apt-get update && sudo apt-get install -y "$@"
+  elif command -v dnf >/dev/null 2>&1; then
+    sudo dnf install -y "$@"
+  elif command -v pacman >/dev/null 2>&1; then
+    sudo pacman -Sy --noconfirm "$@"
+  else
+    return 1
+  fi
+}
+
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "python3 not found, attempting to install..."
+  install_pkgs python3 python3-venv python3-pip \
+    || { echo "ERROR: could not install python3. Install Python 3.8+ manually."; exit 1; }
+fi
+
+if ! command -v node >/dev/null 2>&1; then
+  echo "node not found, attempting to install..."
+  install_pkgs nodejs npm \
+    || { echo "ERROR: could not install node. Install Node.js 18+ manually (https://nodejs.org)."; exit 1; }
+fi
+
+# Distro repos can ship an old Node.js - refuse to run on anything < 18.
+NODE_MAJOR="$(node --version 2>/dev/null | sed 's/^v\([0-9]*\).*/\1/')"
+if [ -z "$NODE_MAJOR" ] || [ "$NODE_MAJOR" -lt 18 ]; then
+  echo "ERROR: Node.js 18+ is required (found: $(node --version 2>/dev/null))."
+  echo "Install a current release from https://nodejs.org (e.g. via NodeSource) and re-run ./start.sh."
+  exit 1
+fi
 
 # Shared secret between frontend and backend API. Override in production:
 #   API_KEY="strong-random-value" ./start.sh
