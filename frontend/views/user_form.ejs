@@ -11,6 +11,7 @@
           </div>
         <% } %>
         <form action="<%= targetUser ? '/users/' + targetUser.id : '/users' %>" method="POST">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
           <div class="row mb-3">
             <div class="col-md-6">
               <label class="form-label">Username *</label>
@@ -27,7 +28,7 @@
           </div>
           <div class="mb-3">
             <label class="form-label">Password <%= targetUser ? '(leave blank to keep current)' : '*' %></label>
-            <input type="password" name="password" class="form-control" placeholder="<%= targetUser ? 'New password (optional)' : 'Enter password' %>" <%= targetUser ? '' : 'required' %>>
+            <input type="password" name="password" class="form-control" minlength="8" placeholder="<%= targetUser ? 'New password (optional)' : 'Enter password' %>" <%= targetUser ? '' : 'required' %>>
           </div>
           <div class="d-flex gap-2">
             <button type="submit" class="btn btn-primary">Save</button>

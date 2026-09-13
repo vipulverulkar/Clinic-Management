@@ -11,5 +11,7 @@ node_modules/
 /tmp/
 .DS_Store
 
-# Local secrets
+# Local secrets and runtime state
 .env
+.session_secret
+sessions.db

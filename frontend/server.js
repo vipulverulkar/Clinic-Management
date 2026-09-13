@@ -5,6 +5,7 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const session = require('express-session');
 const expressLayouts = require('express-ejs-layouts');
+const SQLiteStore = require('connect-sqlite3')(session);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -23,8 +24,30 @@ app.use(session({
   secret: process.env.SESSION_SECRET || require('crypto').randomBytes(32).toString('hex'),
   resave: false,
   saveUninitialized: false,
-  cookie: { maxAge: 8 * 60 * 60 * 1000 }
+  store: new SQLiteStore({ db: 'sessions.db', dir: path.join(__dirname), concurrentDB: true }),
+  cookie: {
+    maxAge: 8 * 60 * 60 * 1000,
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production'
+  }
 }));
+
+// CSRF protection for cookie-session POST forms: per-session token
+// embedded in every form, validated on every POST.
+app.use((req, res, next) => {
+  if (!req.session.csrf) {
+    req.session.csrf = require('crypto').randomBytes(24).toString('hex');
+  }
+  res.locals.csrfToken = req.session.csrf;
+  next();
+});
+app.use((req, res, next) => {
+  if (req.method === 'POST' && (!req.body || req.body._csrf !== req.session.csrf)) {
+    return res.status(403).send('Invalid CSRF token');
+  }
+  next();
+});
 
 // Make logged-in user available in all views (including layout)
 app.use((req, res, next) => {

@@ -59,6 +59,23 @@ Clinic_Mgmt/
 
 ## Installation & Running
 
+Development: `./start.sh` (Flask reloader + dev sessions).
+
+### Production
+
+```bash
+API_KEY="$(openssl rand -hex 32)" \
+SESSION_SECRET="$(openssl rand -hex 32)" \
+ADMIN_USERNAME=admin ADMIN_PASSWORD='<strong-secret>' \
+./start-prod.sh
+```
+
+Production uses gunicorn (2 workers, no debugger), `NODE_ENV=production`,
+env-driven `CORS_ORIGINS`, persistent SQLite sessions, `httpOnly` /
+`SameSite=Lax` cookies (`secure` when `NODE_ENV=production`), per-session
+CSRF tokens on all forms, 8-character minimum passwords, DB-backed login
+rate limiting, and referential guards on master-data deletion.
+
 ### Option 1: Run Backend Only (API)
 
 ```bash

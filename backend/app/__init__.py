@@ -12,7 +12,7 @@ from app.seed import seed_all
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
-    CORS(app)
+    CORS(app, origins=app.config['CORS_ORIGINS'])
 
     db.init_app(app)
     register_blueprints(app)

@@ -16,3 +16,4 @@ class Config:
     # Shared secret the Node.js frontend sends as X-API-Key. Direct API
     # access without it is rejected. Set a strong value in production.
     API_KEY = os.environ.get('API_KEY', 'dev-key')
+    CORS_ORIGINS = os.environ.get('CORS_ORIGINS', 'http://localhost:3000').split(',')

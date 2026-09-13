@@ -13,6 +13,7 @@
 <div class="card mb-4">
   <div class="card-body">
     <form action="/masters/<%= key %>" method="POST" class="row g-2 align-items-end">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <div class="col-md-8">
         <label class="form-label">New value</label>
         <input type="text" name="value" class="form-control" placeholder="<%= section.placeholder %>" required>
@@ -39,12 +40,14 @@
             <span class="text-nowrap">
               <form action="/masters/<%= v.id %>/toggle" method="POST" class="d-inline" title="<%= v.is_active ? 'Deactivate' : 'Activate' %>">
                 <input type="hidden" name="returnTo" value="/masters/<%= key %>">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                 <button type="submit" class="btn btn-sm <%= v.is_active ? 'btn-outline-success' : 'btn-outline-secondary' %>">
                   <i class="bi <%= v.is_active ? 'bi-eye' : 'bi-eye-slash' %>"></i>
                 </button>
               </form>
               <form action="/masters/<%= v.id %>/delete" method="POST" class="d-inline" onsubmit="return confirm('Delete this value?')">
                 <input type="hidden" name="returnTo" value="/masters/<%= key %>">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                 <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete"><i class="bi bi-trash"></i></button>
               </form>
             </span>

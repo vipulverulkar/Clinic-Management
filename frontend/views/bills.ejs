@@ -28,6 +28,7 @@
               <td><%= a.appointment_date ? new Date(a.appointment_date).toLocaleDateString() : 'N/A' %></td>
               <td class="text-end">
                 <form action="/bills/generate" method="POST" class="d-inline">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                   <input type="hidden" name="appointment_id" value="<%= a.id %>">
                   <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-receipt me-1"></i>Generate Bill</button>
                 </form>

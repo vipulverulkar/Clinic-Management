@@ -2,9 +2,27 @@
 from flask import Blueprint, jsonify, request
 
 from app.models import db
+from app.models.appointment import Appointment
+from app.models.bill import Payment
+from app.models.doctor import Doctor
 from app.models.lookup import Lookup, LookupType
+from app.models.patient import Patient
+from app.models.treatment import Treatment
+from app.models.user import User
 
 lookups_bp = Blueprint('lookups', __name__)
+
+# Lookup type -> (model, column) holding live references. Deleting an
+# in-use value is blocked; deactivating it remains allowed.
+REFERENCES = {
+    'specialization': (Doctor, 'specialization'),
+    'treatment_category': (Treatment, 'category'),
+    'appointment_status': (Appointment, 'status'),
+    'gender': (Patient, 'gender'),
+    'blood_group': (Patient, 'blood_group'),
+    'user_role': (User, 'role'),
+    'payment_method': (Payment, 'method'),
+}
 
 
 @lookups_bp.route('/api/lookup-types', methods=['GET'])
@@ -76,6 +94,12 @@ def update_lookup(id):
 
 @lookups_bp.route('/api/lookups/<int:id>', methods=['DELETE'])
 def delete_lookup(id):
-    db.session.delete(Lookup.query.get_or_404(id))
+    lookup = Lookup.query.get_or_404(id)
+    ref = REFERENCES.get(lookup.type)
+    if ref is not None:
+        model, field = ref
+        if model.query.filter(getattr(model, field) == lookup.value).first() is not None:
+            return jsonify({'error': f"'{lookup.value}' is in use and cannot be deleted. Deactivate it instead."}), 400
+    db.session.delete(lookup)
     db.session.commit()
     return '', 204

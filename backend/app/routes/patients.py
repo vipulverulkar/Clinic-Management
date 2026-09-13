@@ -23,13 +23,22 @@ def get_patient(id):
 
 @patients_bp.route('/api/patients', methods=['POST'])
 def create_patient():
-    data = request.get_json()
+    data = request.get_json() or {}
+    missing = [f for f in ('name', 'phone') if not (data.get(f) or '').strip()]
+    if missing:
+        return jsonify({'error': f"Missing required fields: {', '.join(missing)}"}), 400
+    dob = None
+    if data.get('dob'):
+        try:
+            dob = datetime.strptime(data['dob'], '%Y-%m-%d').date()
+        except ValueError:
+            return jsonify({'error': 'dob must be YYYY-MM-DD'}), 400
     patient = Patient(
-        name=data.get('name'),
-        phone=data.get('phone'),
+        name=data.get('name').strip(),
+        phone=data.get('phone').strip(),
         email=data.get('email'),
         address=data.get('address'),
-        dob=datetime.strptime(data['dob'], '%Y-%m-%d').date() if data.get('dob') else None,
+        dob=dob,
         gender=data.get('gender'),
         blood_group=data.get('blood_group'),
         medical_history=data.get('medical_history')
@@ -42,13 +51,16 @@ def create_patient():
 @patients_bp.route('/api/patients/<int:id>', methods=['PUT'])
 def update_patient(id):
     patient = Patient.query.get_or_404(id)
-    data = request.get_json()
+    data = request.get_json() or {}
     patient.name = data.get('name', patient.name)
     patient.phone = data.get('phone', patient.phone)
     patient.email = data.get('email', patient.email)
     patient.address = data.get('address', patient.address)
     if data.get('dob'):
-        patient.dob = datetime.strptime(data['dob'], '%Y-%m-%d').date()
+        try:
+            patient.dob = datetime.strptime(data['dob'], '%Y-%m-%d').date()
+        except ValueError:
+            return jsonify({'error': 'dob must be YYYY-MM-DD'}), 400
     patient.gender = data.get('gender', patient.gender)
     patient.blood_group = data.get('blood_group', patient.blood_group)
     patient.medical_history = data.get('medical_history', patient.medical_history)

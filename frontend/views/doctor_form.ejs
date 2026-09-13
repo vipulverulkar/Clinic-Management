@@ -6,6 +6,7 @@
       </div>
       <div class="card-body">
         <form action="<%= doctor ? '/doctors/' + doctor.id : '/doctors' %>" method="POST">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
           <div class="row mb-3">
             <div class="col-md-6">
               <label class="form-label">Name *</label>

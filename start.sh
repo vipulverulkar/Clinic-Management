@@ -16,6 +16,13 @@ if [ "$API_KEY" = "dev-key" ]; then
   echo "WARNING: using default dev API key. Set API_KEY env var in production."
 fi
 
+# Persistent session secret (survives restarts so logins aren't wiped)
+if [ ! -f ".session_secret" ]; then
+  python3 -c "import secrets; print(secrets.token_hex(32))" > .session_secret
+  chmod 600 .session_secret
+fi
+export SESSION_SECRET="$(cat .session_secret)"
+
 # Start Flask backend
 cd backend
 if [ ! -d "venv" ]; then
@@ -25,7 +32,7 @@ fi
 source venv/bin/activate
 pip install -r requirements.txt > /dev/null 2>&1
 echo "Starting Flask backend on port 5001..."
-PORT=5001 python app.py &
+FLASK_DEBUG=1 PORT=5001 python app.py &
 BACKEND_PID=$!
 cd ..
 

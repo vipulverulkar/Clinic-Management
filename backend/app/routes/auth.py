@@ -1,28 +1,28 @@
 """Auth routes (MVC: Controller)."""
-import time
-from collections import defaultdict
+from datetime import datetime, timedelta
 
 from flask import Blueprint, jsonify, request
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from app.audit import log_action
 from app.models import db
+from app.models.setting import LoginAttempt
 from app.models.user import User
 from app.seed import default_lookup_value
 
 auth_bp = Blueprint('auth', __name__)
 
-# Simple in-memory login rate limit: 5 failed attempts per IP per 5 minutes.
-_FAILED_LOGINS = defaultdict(list)
+# DB-backed login rate limit: 5 failed attempts per IP per 5 minutes.
 _MAX_ATTEMPTS = 5
-_WINDOW_SECONDS = 300
+_WINDOW = timedelta(minutes=5)
 
 
 def _limited(ip):
-    now = time.time()
-    attempts = [t for t in _FAILED_LOGINS[ip] if now - t < _WINDOW_SECONDS]
-    _FAILED_LOGINS[ip] = attempts
-    return len(attempts) >= _MAX_ATTEMPTS
+    cutoff = datetime.utcnow() - _WINDOW
+    LoginAttempt.query.filter(LoginAttempt.attempted_at < cutoff).delete()
+    db.session.commit()
+    return LoginAttempt.query.filter_by(ip=ip).filter(
+        LoginAttempt.attempted_at >= cutoff).count() >= _MAX_ATTEMPTS
 
 
 @auth_bp.route('/api/auth/register', methods=['POST'])
@@ -32,6 +32,8 @@ def register():
     password = data.get('password') or ''
     if not username or not password:
         return jsonify({'error': 'Username and password are required'}), 400
+    if len(password) < 8:
+        return jsonify({'error': 'Password must be at least 8 characters'}), 400
     if User.query.filter_by(username=username).first():
         return jsonify({'error': 'Username already exists'}), 409
     user = User(username=username,
@@ -51,8 +53,10 @@ def login():
         return jsonify({'error': 'Too many failed attempts. Try again later.'}), 429
     user = User.query.filter_by(username=username).first()
     if not user or not check_password_hash(user.password_hash, data.get('password') or ''):
-        _FAILED_LOGINS[ip].append(time.time())
+        db.session.add(LoginAttempt(ip=ip))
+        db.session.commit()
         return jsonify({'error': 'Invalid username or password'}), 401
-    _FAILED_LOGINS.pop(ip, None)
+    LoginAttempt.query.filter_by(ip=ip).delete()
+    db.session.commit()
     log_action('login', 'user', user.id, f'Login by {user.username}')
     return jsonify(user.to_dict())

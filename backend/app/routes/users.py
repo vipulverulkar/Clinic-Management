@@ -36,6 +36,8 @@ def update_user(id):
                 return jsonify({'error': 'Cannot demote the last admin user'}), 400
         user.role = data['role']
     if data.get('password'):
+        if len(data['password']) < 8:
+            return jsonify({'error': 'Password must be at least 8 characters'}), 400
         user.password_hash = generate_password_hash(data['password'])
     db.session.commit()
     return jsonify(user.to_dict())

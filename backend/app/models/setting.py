@@ -31,3 +31,10 @@ class AuditLog(db.Model):
             'detail': self.detail,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
+
+
+class LoginAttempt(db.Model):
+    """Failed login attempts per IP for DB-backed rate limiting."""
+    id = db.Column(db.Integer, primary_key=True)
+    ip = db.Column(db.String(45), nullable=False, index=True)
+    attempted_at = db.Column(db.DateTime, default=datetime.utcnow)

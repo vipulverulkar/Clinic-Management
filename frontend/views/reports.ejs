@@ -57,6 +57,21 @@
   </div>
 </div>
 
+<div class="row mb-4 g-3">
+  <div class="col-lg-8">
+    <div class="card h-100">
+      <div class="card-header"><i class="bi bi-graph-up-arrow me-1"></i>Daily Revenue (&#8377;)</div>
+      <div class="card-body"><canvas id="revenueChart" height="130"></canvas></div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card h-100">
+      <div class="card-header"><i class="bi bi-pie-chart me-1"></i>Bills by Status (&#8377;)</div>
+      <div class="card-body"><canvas id="billStatusChart"></canvas></div>
+    </div>
+  </div>
+</div>
+
 <div class="row g-3">
   <div class="col-md-6">
     <div class="card h-100">
@@ -90,6 +105,20 @@
 <% } %>
 
 <% if (appts) { %>
+<div class="row g-3 mt-1">
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-header"><i class="bi bi-pie-chart-fill me-1"></i>Appointments by Status</div>
+      <div class="card-body"><canvas id="apptStatusChart"></canvas></div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-header"><i class="bi bi-bar-chart-fill me-1"></i>Appointments by Doctor</div>
+      <div class="card-body"><canvas id="doctorChart"></canvas></div>
+    </div>
+  </div>
+</div>
 <div class="row g-3 mt-1">
   <div class="col-md-4">
     <div class="card h-100">
@@ -128,3 +157,77 @@
   </div>
 </div>
 <% } %>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+(function() {
+  if (typeof Chart === 'undefined') return;
+  var dark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+  Chart.defaults.color = dark ? '#9aa4c0' : '#6c757d';
+  Chart.defaults.borderColor = dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
+  Chart.defaults.font.family = "'Plus Jakarta Sans', 'Segoe UI', system-ui, sans-serif";
+  var revenue = <%- JSON.stringify(revenue || null) %>;
+  var appts = <%- JSON.stringify(appts || null) %>;
+  var css = getComputedStyle(document.documentElement);
+  var brand1 = css.getPropertyValue('--brand-1').trim() || '#0d6efd';
+  var brand2 = css.getPropertyValue('--brand-2').trim() || '#6610f2';
+  var palette = ['#198754', brand1, '#dc3545', '#ffc107', brand2, '#0dcaf0', '#fd7e14'];
+  function inr(v) { return '\u20B9' + Number(v).toLocaleString('en-IN'); }
+
+  var rc = document.getElementById('revenueChart');
+  if (rc && revenue && revenue.by_day && revenue.by_day.length) {
+    new Chart(rc, {
+      data: {
+        labels: revenue.by_day.map(function(d) { return d.date; }),
+        datasets: [
+          { type: 'bar', label: 'Billed', data: revenue.by_day.map(function(d) { return d.billed; }),
+            backgroundColor: brand1 + 'CC', borderRadius: 8 },
+          { type: 'line', label: 'Collected', data: revenue.by_day.map(function(d) { return d.collected; }),
+            borderColor: '#198754', backgroundColor: '#198754', tension: 0.35, fill: false, pointRadius: 4 }
+        ]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: { label: function(c) { return ' ' + c.dataset.label + ': ' + inr(c.parsed.y); } } } },
+        scales: { y: { ticks: { callback: function(v) { return '\u20B9' + v; } } } }
+      }
+    });
+  }
+  function doughnut(id, obj, money) {
+    var el = document.getElementById(id);
+    if (!el || !obj || !Object.keys(obj).length) return;
+    new Chart(el, {
+      type: 'doughnut',
+      data: {
+        labels: Object.keys(obj),
+        datasets: [{ data: Object.values(obj), backgroundColor: palette, borderWidth: 2, hoverOffset: 8 }]
+      },
+      options: {
+        responsive: true, cutout: '62%',
+        plugins: { legend: { position: 'bottom' },
+          tooltip: { callbacks: { label: function(c) { return ' ' + c.label + ': ' + (money ? inr(c.parsed) : c.parsed); } } } }
+      }
+    });
+  }
+  if (revenue) doughnut('billStatusChart', revenue.by_status, true);
+  if (appts) doughnut('apptStatusChart', appts.by_status, false);
+
+  var dc = document.getElementById('doctorChart');
+  if (dc && appts && appts.by_doctor && Object.keys(appts.by_doctor).length) {
+    var names = Object.keys(appts.by_doctor);
+    new Chart(dc, {
+      type: 'bar',
+      data: {
+        labels: names,
+        datasets: [{ data: names.map(function(n) { return appts.by_doctor[n]; }),
+          backgroundColor: names.map(function(_, i) { return palette[i % palette.length] + 'CC'; }),
+          borderRadius: 8 }]
+      },
+      options: {
+        indexAxis: 'y', responsive: true,
+        plugins: { legend: { display: false } },
+        scales: { x: { ticks: { precision: 0 } } }
+      }
+    });
+  }
+})();
+</script>

@@ -21,7 +21,10 @@ def get_treatment(id):
 
 @treatments_bp.route('/api/treatments', methods=['POST'])
 def create_treatment():
-    data = request.get_json()
+    data = request.get_json() or {}
+    missing = [f for f in ('name', 'category') if not (data.get(f) or '').strip()]
+    if missing:
+        return jsonify({'error': f"Missing required fields: {', '.join(missing)}"}), 400
     treatment = Treatment(
         name=data.get('name'),
         category=data.get('category'),
@@ -37,7 +40,7 @@ def create_treatment():
 @treatments_bp.route('/api/treatments/<int:id>', methods=['PUT'])
 def update_treatment(id):
     treatment = Treatment.query.get_or_404(id)
-    data = request.get_json()
+    data = request.get_json() or {}
     treatment.name = data.get('name', treatment.name)
     treatment.category = data.get('category', treatment.category)
     treatment.description = data.get('description', treatment.description)

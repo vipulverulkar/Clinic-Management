@@ -21,7 +21,10 @@ def get_doctor(id):
 
 @doctors_bp.route('/api/doctors', methods=['POST'])
 def create_doctor():
-    data = request.get_json()
+    data = request.get_json() or {}
+    missing = [f for f in ('name', 'specialization', 'phone') if not (data.get(f) or '').strip()]
+    if missing:
+        return jsonify({'error': f"Missing required fields: {', '.join(missing)}"}), 400
     doctor = Doctor(
         name=data.get('name'),
         specialization=data.get('specialization'),
@@ -40,7 +43,7 @@ def create_doctor():
 @doctors_bp.route('/api/doctors/<int:id>', methods=['PUT'])
 def update_doctor(id):
     doctor = Doctor.query.get_or_404(id)
-    data = request.get_json()
+    data = request.get_json() or {}
     doctor.name = data.get('name', doctor.name)
     doctor.specialization = data.get('specialization', doctor.specialization)
     doctor.phone = data.get('phone', doctor.phone)

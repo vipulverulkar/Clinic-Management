@@ -37,6 +37,7 @@
               <td class="text-nowrap">
                 <a href="/patients/<%= p.id %>/edit" class="btn btn-sm btn-outline-primary" title="Edit"><i class="bi bi-pencil"></i></a>
                 <form action="/patients/<%= p.id %>/delete" method="POST" class="d-inline" onsubmit="return confirm('Delete this patient?')">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                   <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete"><i class="bi bi-trash"></i></button>
                 </form>
               </td>

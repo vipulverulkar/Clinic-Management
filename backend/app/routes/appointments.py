@@ -22,14 +22,28 @@ def get_appointment(id):
     return jsonify(appointment.to_dict())
 
 
+def _parse_appt_datetime(value):
+    try:
+        return datetime.fromisoformat(value.replace('Z', '+00:00'))
+    except (ValueError, AttributeError):
+        return None
+
+
 @appointments_bp.route('/api/appointments', methods=['POST'])
 def create_appointment():
-    data = request.get_json()
+    data = request.get_json() or {}
+    missing = [f for f in ('patient_id', 'doctor_id', 'treatment_id', 'appointment_date')
+               if not data.get(f)]
+    if missing:
+        return jsonify({'error': f"Missing required fields: {', '.join(missing)}"}), 400
+    appointment_date = _parse_appt_datetime(data['appointment_date'])
+    if appointment_date is None:
+        return jsonify({'error': 'appointment_date must be ISO datetime'}), 400
     appointment = Appointment(
         patient_id=data.get('patient_id'),
         doctor_id=data.get('doctor_id'),
         treatment_id=data.get('treatment_id'),
-        appointment_date=datetime.fromisoformat(data['appointment_date'].replace('Z', '+00:00')) if data.get('appointment_date') else None,
+        appointment_date=appointment_date,
         status=data.get('status') or default_lookup_value('appointment_status') or 'pending',
         notes=data.get('notes')
     )
@@ -41,12 +55,15 @@ def create_appointment():
 @appointments_bp.route('/api/appointments/<int:id>', methods=['PUT'])
 def update_appointment(id):
     appointment = Appointment.query.get_or_404(id)
-    data = request.get_json()
+    data = request.get_json() or {}
     appointment.patient_id = data.get('patient_id', appointment.patient_id)
     appointment.doctor_id = data.get('doctor_id', appointment.doctor_id)
     appointment.treatment_id = data.get('treatment_id', appointment.treatment_id)
     if data.get('appointment_date'):
-        appointment.appointment_date = datetime.fromisoformat(data['appointment_date'].replace('Z', '+00:00'))
+        parsed = _parse_appt_datetime(data['appointment_date'])
+        if parsed is None:
+            return jsonify({'error': 'appointment_date must be ISO datetime'}), 400
+        appointment.appointment_date = parsed
     appointment.status = data.get('status', appointment.status)
     appointment.notes = data.get('notes', appointment.notes)
     db.session.commit()
